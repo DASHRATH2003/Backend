@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const { db } = require('../db');
+const usePg = process.env.USE_POSTGRES === 'true' || !!process.env.DATABASE_URL;
 
 function buildTransporter(account) {
   const demo = process.env.DEMO_MODE === 'true';
@@ -51,8 +52,11 @@ async function sendWarmUpEmail(senderAccount, receiverAccount) {
   try {
     const info = await transporter.sendMail(mailOptions);
     db.run(
-      `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      usePg
+        ? `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
+           VALUES ($1, $2, $3, $4, $5, $6)`
+        : `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
+           VALUES (?, ?, ?, ?, ?, ?)`,
       [
         senderAccount.email,
         receiverAccount.email,
@@ -65,8 +69,11 @@ async function sendWarmUpEmail(senderAccount, receiverAccount) {
     return { ok: true };
   } catch (err) {
     db.run(
-      `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      usePg
+        ? `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
+           VALUES ($1, $2, $3, $4, $5, $6)`
+        : `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
+           VALUES (?, ?, ?, ?, ?, ?)`,
       [
         senderAccount.email,
         receiverAccount.email,

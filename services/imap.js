@@ -1,6 +1,7 @@
 const imapSimple = require('imap-simple');
 const { db } = require('../db');
 const { sendWarmUpEmail } = require('./email');
+const usePg = process.env.USE_POSTGRES === 'true' || !!process.env.DATABASE_URL;
 
 async function checkAndReplyForAccount(account) {
   const demo = process.env.DEMO_MODE === 'true';
@@ -33,8 +34,11 @@ async function checkAndReplyForAccount(account) {
     connection.end();
   } catch (err) {
     db.run(
-      `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      usePg
+        ? `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
+           VALUES ($1, $2, $3, $4, $5, $6)`
+        : `INSERT INTO logs (sender, receiver, status, message_id, error, timestamp)
+           VALUES (?, ?, ?, ?, ?, ?)`,
       [account.email, account.email, 'imap_error', null, err?.message || String(err), new Date().toISOString()]
     );
   }
